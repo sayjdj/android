@@ -1,10 +1,13 @@
 package com.mapzen;
 
 import com.mapzen.support.MapzenTestRunner;
+import com.mapzen.support.TestBaseActivity;
+import com.mapzen.support.TestHelper;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
 import static org.fest.assertions.api.ANDROID.assertThat;
@@ -14,10 +17,12 @@ import static org.fest.assertions.api.Assertions.assertThat;
 @RunWith(MapzenTestRunner.class)
 public class MapControllerTest {
     private MapController controller;
+    private TestBaseActivity activity;
 
     @Before
     public void setUp() throws Exception {
-        controller = MapController.getInstance();
+        activity = TestHelper.initBaseActivity();
+        controller = MapController.getInstance(activity);
     }
 
     @Test
@@ -27,6 +32,16 @@ public class MapControllerTest {
 
     @Test
     public void getInstance_shouldBeSingleton() throws Exception {
-        assertThat(controller).isSameAs(MapController.getInstance());
+        assertThat(controller).isSameAs(MapController.getInstance(activity));
+    }
+
+    @Test
+    public void getMap_shouldNotBeNull() throws Exception {
+        assertThat(controller.getMap()).isNotNull();
+    }
+
+    @Test
+    public void getApp_shouldNotBeNull() throws Exception {
+        assertThat(controller.getApp()).isNotNull();
     }
 }
