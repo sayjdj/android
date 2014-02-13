@@ -1,5 +1,7 @@
 package com.mapzen;
 
+import android.location.Location;
+
 import com.mapzen.support.MapzenTestRunner;
 import com.mapzen.support.TestBaseActivity;
 import com.mapzen.support.TestHelper;
@@ -43,5 +45,18 @@ public class MapControllerTest {
     @Test
     public void getApp_shouldNotBeNull() throws Exception {
         assertThat(controller.getApp()).isNotNull();
+    }
+
+    @Test
+    public void getLocation_shouldNotBeNull() throws Exception {
+        controller.setLocation(new Location(""));
+        assertThat(controller.getLocation()).isNotNull();
+    }
+
+    @Test
+    public void setLocation_shouldUpdateLocation() throws Exception {
+        Location expected = new Location("expected");
+        controller.setLocation(expected);
+        assertThat(controller.getLocation()).isSameAs(expected);
     }
 }

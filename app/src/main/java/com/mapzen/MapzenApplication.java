@@ -49,18 +49,6 @@ public class MapzenApplication extends Application {
         return mapPosition.zoomLevel;
     }
 
-    public GeoPoint getLocationPoint() {
-        return getLocationPosition().getGeoPoint();
-    }
-
-    public void setLocation(Location location) {
-        this.location = location;
-    }
-
-    public Location getLocation() {
-        return location;
-    }
-
     public MapPosition getLocationPosition() {
         if (location != null) {
             mapPosition = new MapPosition(location.getLatitude(), location.getLongitude(),

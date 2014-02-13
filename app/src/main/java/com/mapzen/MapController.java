@@ -1,6 +1,7 @@
 package com.mapzen;
 
 import android.content.Context;
+import android.location.Location;
 
 import com.mapzen.activity.BaseActivity;
 
@@ -11,6 +12,7 @@ public class MapController {
     private Map map;
     private MapzenApplication app;
     private Context context;
+    private Location location;
 
     public MapController(Context context) {
         this.context = context;
@@ -33,4 +35,11 @@ public class MapController {
         return map;
     }
 
+    public Location getLocation() {
+        return location;
+    }
+
+    public void setLocation(Location location) {
+        this.location = location;
+    }
 }
