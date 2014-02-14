@@ -134,7 +134,7 @@ public class BaseActivity extends MapActivity {
 
     private void notifyDebugMode() {
         String msg = "debug mode: "
-            + (debuggable ? "on" : "off");
+                + (debuggable ? "on" : "off");
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
     }
 
