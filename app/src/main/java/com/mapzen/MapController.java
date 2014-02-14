@@ -5,6 +5,7 @@ import android.location.Location;
 
 import com.mapzen.activity.BaseActivity;
 
+import org.oscim.core.MapPosition;
 import org.oscim.map.Map;
 
 public class MapController {
@@ -12,6 +13,7 @@ public class MapController {
     private Map map;
     private MapzenApplication app;
     private Location location;
+    private MapPosition mapPosition = new MapPosition(1.0, 1.0, 1.0);
 
     public MapController(Context context) {
         this.app = (MapzenApplication) context.getApplicationContext();
@@ -39,5 +41,18 @@ public class MapController {
 
     public void setLocation(Location location) {
         this.location = location;
+        mapPosition.setPosition(location.getLatitude(), location.getLongitude());
+    }
+
+    public MapPosition getMapPosition() {
+        return mapPosition;
+    }
+
+    public double getZoomLevel() {
+        return mapPosition.zoomLevel;
+    }
+
+    public void setZoomLevel(int zoomLevel) {
+        mapPosition.setZoomLevel(zoomLevel);
     }
 }

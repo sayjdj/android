@@ -9,6 +9,7 @@ import com.mapzen.support.TestHelper;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.oscim.core.MapPosition;
 import org.robolectric.annotation.Config;
 
 import static org.fest.assertions.api.ANDROID.assertThat;
@@ -57,5 +58,46 @@ public class MapControllerTest {
         Location expected = new Location("expected");
         controller.setLocation(expected);
         assertThat(controller.getLocation()).isSameAs(expected);
+    }
+
+    @Test
+    public void getMapPosition_shouldNotBeNull() throws Exception {
+        Location expected = new Location("expected");
+        controller.setLocation(expected);
+        assertThat(controller.getMapPosition()).isNotNull();
+    }
+
+    @Test
+    public void getMapPosition_shouldHaveCorrectLocationCoordinates() throws Exception {
+        int expectedLat = 12;
+        int expectedLng = 24;
+        Location expected = new Location("expected");
+        expected.setLatitude(expectedLat);
+        expected.setLongitude(expectedLng);
+        controller.setLocation(expected);
+        MapPosition position = controller.getMapPosition();
+        assertThat(Math.round(position.getLatitude())).isEqualTo(expectedLat);
+        assertThat(Math.round(position.getLongitude())).isEqualTo(expectedLng);
+    }
+
+    @Test
+    public void getMapPosition_shouldHaveCorrectZoomLevel() throws Exception {
+        int expected = 5;
+        controller.setZoomLevel(expected);
+        MapPosition mapPosition = controller.getMapPosition();
+        assertThat(mapPosition.zoomLevel).isEqualTo(5);
+    }
+
+    @Test
+    public void setZoomLevel_shouldStoreZoom() throws Exception {
+        int expected = 5;
+        controller.setZoomLevel(expected);
+        assertThat(controller.getZoomLevel()).isEqualTo(expected);
+    }
+
+    @Test
+    public void getZoomLevel_shouldGetStoredZoom() throws Exception {
+        controller.setZoomLevel(5);
+        assertThat(controller.getZoomLevel()).isNotNull();
     }
 }
