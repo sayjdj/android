@@ -6,26 +6,52 @@ Start where you are
 
 The following dependencies must be installed locally prior to building/running the project.
 
-### Install VTM
+### Install Android SDK, Support Library, and Google Play Services
 
-Compile and install the VectorTileMap depenency in the local .m2 repository.
-
-<pre><code>$ clone	git@github.com:mapzen/vtm.git
-$ cd vtm
-$ git submodule init
-$ git submodule update
-$ ./gradlew clean install
+<pre><code>$ git clone https://github.com/mapzen/maven-android-sdk-deployer.git
+$ cd maven-android-sdk-deployer
+$ mvn install -P 4.4 # Used for building production application
+$ mvn install -P 4.3 # Used for unit tests (Robolectric)
+$ mvn install -fextras/compatibility-v4/pom.xml
+$ mvn install -fextras/google-play-services/pom.xml
 </pre></code>
 
-## Build project
+See [Maven Android SDK Deployer](https://github.com/mosabua/maven-android-sdk-deployer) project for more information.
 
-Clone project and import `build.gradle` in project root into Android Studio.
-
--or-
-
-Build via command line using the Gradle wrapper.
-
-<pre><code>$ clone git@github.com:mapzen/android.git mapzen
-$ cd mapzen
-$ ./gradlew clean installDebug
+### Install GeoJson
+<pre><code>$ git clone https://github.com/mapzen/simple-geojson.git geojson
+$ cd geojson && ./gradlew clean install
 </pre></code>
+
+### Install VectorTileMap Library
+
+<pre><code>$ git clone --recursive https://github.com/mapzen/vtm.git
+$ echo "ndk.dir=/path/to/ndk" >> vtm-android/local.properties
+$ cd vtm && ./gradlew clean install
+</pre></code>
+
+### Install VectorTileMap Native Libs
+
+<pre><code>$ git clone https://github.com/mapzen/vtm-native-libs.git
+$ cd vtm-native-libs && ./install-dependencies.sh
+</pre></code>
+
+### Install Robolectric
+
+<pre><code>$ git clone https://github.com/mapzen/robolectric.git
+$ cd robolectric && mvn clean install
+</pre></code>
+
+## Build Mapzen Application
+
+<pre><code>$ git clone https://github.com/mapzen/android.git mapzen-android
+$ cd mapzen-android
+$ mvn clean install
+$ mvn android:deploy android:run
+</pre></code>
+
+## Contributions
+We appreciate pull requests. Please run <code>$ mvn clean verify</code>
+and make sure it runs cleanly as it runs all of our tests and code quality tools 
+we have configured. If you cannot make it run cleanly please let us know in the
+comments of your pull requests and we will help. Thanks!
