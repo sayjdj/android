@@ -24,6 +24,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Typeface;
 import android.location.Location;
 import android.os.Bundle;
+
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.PagerAdapter;
@@ -72,6 +73,7 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
     private int previousPosition;
     private boolean locationPassThrough = false;
     private boolean hasFoundPath = false;
+    private boolean instructionIsCompleted = false;
 
     public static RouteFragment newInstance(BaseActivity act, Feature feature) {
         final RouteFragment fragment = new RouteFragment();
@@ -184,10 +186,10 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
         if (!locationPassThrough) {
             Instruction instruction = instructions.get(getCurrentItem());
             double[] locationPoint = {location.getLatitude(), location.getLongitude()};
-            Logger.d("RouteFragment::onLocationChange: current location: "
+            logToDatabase("RouteFragment::onLocationChange: current location: "
                     + String.valueOf(location.getLatitude()) + " ,"
                     + String.valueOf(location.getLongitude()));
-            Logger.d("RouteFragment::onLocationChange: reference location: "
+            logToDatabase("RouteFragment::onLocationChange: reference location: "
                     + instruction.toString());
             double[] onRoadPoint;
             onRoadPoint = instruction.snapTo(locationPoint, -90);
@@ -213,27 +215,35 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
     }
 
     public void onLocationChanged(Location location) {
+        logToDatabase("==== 'BEGIN' ====");
+        logToDatabase("original location accuracy: " + String.valueOf(location.getAccuracy()));
+        logToDatabase("original location: " + location.toString());
+        logToDatabase("current item" + String.valueOf(pager.getCurrentItem()));
         Location correctedLocation = snapTo(location);
-        if (act.isInDebugMode()) {
-            storeLocationInfo(location, correctedLocation);
-        }
+        storeLocationInfo(location, correctedLocation);
+
+        //// Did we find reasonable corrected location?
         if (correctedLocation != null) {
+         // && location.distanceTo(correctedLocation) < location.getAccuracy()) {
             getMapController().setLocation(correctedLocation);
             mapFragment.findMe();
             hasFoundPath = true;
-            Logger.d("RouteFragment::onLocationChange: Corrected: " + correctedLocation.toString());
+            logToDatabase(
+                    "RouteFragment::onLocationChange: Corrected: " + correctedLocation.toString());
         } else {
-            Logger.d("RouteFragment::onLocationChange: ambigous location");
+            logToDatabase("RouteFragment::onLocationChange: ambigous location");
         }
 
+        // Are we outside of given lost threshold
         if (WALKING_LOST_THRESHOLD < location.distanceTo(correctedLocation) &&
                 location.getAccuracy() < getWalkingAdvanceRadius()) {
             // execute reroute query and reset the path
-            Logger.d("RouteFragment::onLocationChange: probably off course");
+            logToDatabase("RouteFragment::onLocationChange: probably off course");
         }
 
+        // Have we found anything useful
         if (!hasFoundPath && getStartLocation().distanceTo(location) > getWalkingAdvanceRadius()) {
-            Logger.d("RouteFragment::onLocationChange: hasn't hit first location and is"
+            logToDatabase("RouteFragment::onLocationChange: hasn't hit first location and is"
                     + "probably off course");
         }
 
@@ -245,32 +255,84 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
 
         if (correctedLocation != null && nextTurn != null) {
             int distanceToNextTurn = (int) Math.floor(correctedLocation.distanceTo(nextTurn));
-            if (distanceToNextTurn > getWalkingAdvanceRadius()) {
-                Logger.d("RouteFragment::onLocationChangeLocation: " +
-                        "outside defined radius");
-            } else {
-                Logger.d("RouteFragment::onLocationChangeLocation: " +
+
+            // Inside of radius of next instruction
+            if (distanceToNextTurn < getWalkingAdvanceRadius()) {
+                logToDatabase("RouteFragment::onLocationChangeLocation: " +
                         "inside defined radius advancing");
+                // inside walking radius
                 goToNextInstruction();
+                instructionIsCompleted = false;
+                return;
+            } else {
+                logToDatabase("RouteFragment::onLocationChangeLocation: " +
+                        "outside defined radius");
             }
-            Logger.d("RouteFragment::onLocationChangeLocation: " +
+
+            logToDatabase("instructions: " + instructions.toString());
+            // Lets make sure that it's valid
+            if (pager.getCurrentItem() > 0 && pager.getCurrentItem() < (instructions.size() - 1)) {
+                // get previous instruction to see if we have walked out side of it
+                logToDatabase("instruction is completed flag: " +
+                        String.valueOf(instructionIsCompleted));
+                logToDatabase("current Item: " + String.valueOf(pager.getCurrentItem()));
+                logToDatabase("next turn: " + nextTurn.toString());
+                Location prevTurn = getNextTurnTo(instructions.get(pager.getCurrentItem()));
+                logToDatabase("previus turn: " + prevTurn.toString());
+                logToDatabase("correctedLocation: " + correctedLocation.toString());
+                logToDatabase("distance from pre turn with corrected: " +
+                        String.valueOf(correctedLocation.distanceTo(prevTurn)));
+                logToDatabase("distance from pre turn with original: " +
+                        String.valueOf(location.distanceTo(prevTurn)));
+                if (correctedLocation.distanceTo(prevTurn) > getWalkingAdvanceRadius()) {
+                    // Sets what to do after action has been completed
+                    logToDatabase("should be switching language now? " +
+                            String.valueOf(instructionIsCompleted));
+                    if (!instructionIsCompleted) {
+                        View v = pager.getChildAt(pager.getCurrentItem());
+                        if (v != null) {
+                            TextView tv1 = (TextView) v.findViewById(R.id.full_instruction);
+                            logToDatabase("exisiting language: " + tv1.getText().toString());
+                            logToDatabase("exisiting language visible?: " +
+                                    String.valueOf(tv1.getVisibility() == View.VISIBLE));
+                            tv1.setVisibility(View.GONE);
+                            TextView tv2 = (TextView)
+                                    v.findViewById(R.id.full_instruction_after_action);
+                            logToDatabase("new language: " + tv2.getText().toString());
+                            logToDatabase("new language visible?: " +
+                                    String.valueOf(tv2.getVisibility() == View.VISIBLE));
+                            tv2.setVisibility(View.VISIBLE);
+                            ImageView iv1 = (ImageView) v.findViewById(R.id.turn_icon);
+                            iv1.setVisibility(View.GONE);
+                            ImageView iv2 = (ImageView) v.findViewById(R.id.turn_icon_after_action);
+                            iv2.setVisibility(View.VISIBLE);
+                            instructionIsCompleted = true;
+                        }
+                    }
+                } else {
+                    logToDatabase("outside should no need for anything");
+                }
+            }
+
+            logToDatabase("RouteFragment::onLocationChangeLocation: " +
                     "new current location: " + location.toString());
-            Logger.d("RouteFragment::onLocationChangeLocation: " +
+            logToDatabase("RouteFragment::onLocationChangeLocation: " +
                     "next turn: " + nextTurn.toString());
-            Logger.d("RouteFragment::onLocationChangeLocation: " +
+            logToDatabase("RouteFragment::onLocationChangeLocation: " +
                     "distance to next turn: " + String.valueOf(distanceToNextTurn));
-            Logger.d("RouteFragment::onLocationChangeLocation: " +
+            logToDatabase("RouteFragment::onLocationChangeLocation: " +
                     "threshold: " + String.valueOf(getWalkingAdvanceRadius()));
         } else {
             if (correctedLocation == null) {
-                Logger.d("RouteFragment::onLocationChangeLocation: " +
+                logToDatabase("RouteFragment::onLocationChangeLocation: " +
                         "**next turn** is null screw it");
             }
             if (nextTurn == null) {
-                Logger.d("RouteFragment::onLocationChangeLocation: " +
+                logToDatabase("RouteFragment::onLocationChangeLocation: " +
                         "**location** is null screw it");
             }
         }
+        logToDatabase("==== 'END' ====");
     }
 
     private void showDirectionListFragment() {
@@ -381,16 +443,28 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
         act.registerReceiver(locationReceiver, filter);
     }
 
+    private void logToDatabase(String msg) {
+        if (act.isInDebugMode()) {
+            SQLiteDatabase db = act.getDb();
+            String insertSql =
+                    String.format("insert into log_entries (log_entry) values (\"%s\")", msg);
+            db.execSQL(insertSql);
+        }
+    }
+
     private void storeLocationInfo(Location location, Location correctedLocation) {
-        SQLiteDatabase db = act.getDb();
-        db.execSQL(LocationDatabaseHelper.insertSQLForLocationCorrection(location,
-                correctedLocation, instructions.get(pager.getCurrentItem())));
+        if (act.isInDebugMode()) {
+            SQLiteDatabase db = act.getDb();
+            db.execSQL(LocationDatabaseHelper.insertSQLForLocationCorrection(location,
+                    correctedLocation, instructions.get(pager.getCurrentItem())));
+        }
     }
 
     private static class RoutesAdapter extends PagerAdapter {
         private List<Instruction> instructions = new ArrayList<Instruction>();
         private RouteFragment parent;
         private Context context;
+        private Instruction currentInstruction;
 
         public RoutesAdapter(Context context, RouteFragment parent,
                 List<Instruction> instructions) {
@@ -404,9 +478,10 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
             container.removeView((View) object);
         }
 
+
         @Override
         public Object instantiateItem(ViewGroup container, int position) {
-            Instruction instruction = instructions.get(position);
+            currentInstruction = instructions.get(position);
             View view = View.inflate(context, R.layout.instruction, null);
 
             if (position == instructions.size() - 1) {
@@ -416,11 +491,23 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
             }
 
             TextView fullInstruction = (TextView) view.findViewById(R.id.full_instruction);
-            fullInstruction.setText(getFullInstructionWithBoldName(instruction));
+            fullInstruction.setText(
+                    getFullInstructionWithBoldName(currentInstruction.getFullInstruction()));
+
+            TextView fullInstructionAfterAction =
+                    (TextView) view.findViewById(R.id.full_instruction_after_action);
+            fullInstructionAfterAction.setText(
+                    getFullInstructionWithBoldName(
+                            currentInstruction.getFullInstructionAfterAction()));
 
             ImageView turnIcon = (ImageView) view.findViewById(R.id.turn_icon);
             turnIcon.setImageResource(DisplayHelper.getRouteDrawable(context,
-                    instruction.getTurnInstruction(), DisplayHelper.IconStyle.WHITE));
+                    currentInstruction.getTurnInstruction(), DisplayHelper.IconStyle.WHITE));
+
+            ImageView turnIconAfterAction =
+                    (ImageView) view.findViewById(R.id.turn_icon_after_action);
+            turnIconAfterAction.setImageResource(DisplayHelper.getRouteDrawable(context,
+                    10, DisplayHelper.IconStyle.WHITE));
 
             if (instructions.size() != position + 1) {
                 ImageButton next = (ImageButton) view.findViewById(R.id.route_next);
@@ -443,13 +530,13 @@ public class RouteFragment extends BaseFragment implements DirectionListFragment
                     }
                 });
             }
+            view.setTag("Instruction_" + String.valueOf(position));
             container.addView(view);
             return view;
         }
 
-        private SpannableStringBuilder getFullInstructionWithBoldName(Instruction instruction) {
-            final String fullInstruction = instruction.getFullInstruction();
-            final String name = instruction.getName();
+        private SpannableStringBuilder getFullInstructionWithBoldName(String fullInstruction) {
+            final String name = currentInstruction.getName();
             final int startOfName = fullInstruction.indexOf(name);
             final int endOfName = startOfName + name.length();
             final StyleSpan boldStyleSpan = new StyleSpan(Typeface.BOLD);

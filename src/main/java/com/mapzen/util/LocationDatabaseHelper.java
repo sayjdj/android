@@ -24,7 +24,7 @@ public class LocationDatabaseHelper extends SQLiteOpenHelper {
     public static final String DB_NAME = "locations.db";
     public static final String TABLE_LOCATIONS = "locations";
 
-    private final String sql = "create table " + TABLE_LOCATIONS + " ("
+    private final String locationsCreatesql = "create table " + TABLE_LOCATIONS + " ("
             + "_id integer primary key autoincrement,"
             + COLUMN_PROVIDER + " text not null,"
             + COLUMN_LAT + " text not null,"
@@ -39,20 +39,26 @@ public class LocationDatabaseHelper extends SQLiteOpenHelper {
             + COLUMN_TIME + " numeric not null,"
             + COLUMN_DUMP + " text not null)";
 
+    private final String logsCreateSql = "create table log_entries ("
+            + "_id integer primary key autoincrement, log_entry text not null)";
+
     public LocationDatabaseHelper(Context context) {
         super(context, context.getExternalFilesDir(null).getAbsolutePath() + "/" + DB_NAME,
-                null, 1);
+                null, 5);
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL(sql);
+        db.execSQL(locationsCreatesql);
+        db.execSQL(logsCreateSql);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL("drop table locations");
-        db.execSQL(sql);
+        db.execSQL("drop table log_entries");
+        db.execSQL(locationsCreatesql);
+        db.execSQL(logsCreateSql);
     }
 
     public static String insertSQLForLocationCorrection(Location location,

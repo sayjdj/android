@@ -7,6 +7,7 @@ import com.mapzen.osrm.Instruction;
 import com.mapzen.shadows.ShadowVolley;
 import com.mapzen.support.MapzenTestRunner;
 import com.mapzen.support.TestBaseActivity;
+import com.mapzen.support.TestHelper;
 import com.mapzen.util.LocationDatabaseHelper;
 import com.mapzen.widget.DistanceView;
 
@@ -19,8 +20,10 @@ import org.oscim.core.GeoPoint;
 import org.oscim.map.TestMap;
 import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowAdapterView;
 import org.robolectric.shadows.ShadowApplication;
 import org.robolectric.shadows.ShadowPopupMenu;
+import org.robolectric.shadows.ShadowToast;
 import org.robolectric.tester.android.view.TestMenu;
 import org.robolectric.tester.android.view.TestMenuItem;
 import org.robolectric.util.FragmentTestUtil;
@@ -121,8 +124,42 @@ public class RouteFragmentTest {
         assertThat(fragment.getCurrentItem()).isEqualTo(1);
     }
 
+    //@Test
+    public void onLocationChange_shouldChangeInstructionVerbiage() throws Exception {
+        fragment.setLocationPassThrough(true);
+        ArrayList<Instruction> instructions = new ArrayList<Instruction>();
+        instructions.add(getTestInstruction(120, 120));
+        instructions.add(getTestInstruction(80, 120));
+        instructions.add(getTestInstruction(40, 120));
+        instructions.add(getTestInstruction(10, 120));
+
+        fragment.setInstructions(instructions);
+        FragmentTestUtil.startFragment(fragment);
+
+        fragment.onLocationChanged(getTestLocation(80, 120));
+        TextView actualTextView = (TextView) getInstructionView(fragment.getCurrentItem()).findViewById(R.id.full_instruction);
+        assertThat(actualTextView.getText().toString()).isEqualTo(
+                "Make a right on to 19th Street and continue on for 520 ft");
+
+        TestHelper.TestLocation.Builder builder = new TestHelper.TestLocation.Builder(getTestLocation(100.0,100.0));
+        TestHelper.TestLocation location2 = builder.setBearing(90).setDistance(0.15).build();
+        fragment.onLocationChanged(location2);
+        assertThat(actualTextView.getText().toString()).isEqualTo("Make a right on to 19th Street and continue on for 520 ft");
+
+        TestHelper.TestLocation location3 = builder.setDistance(0.20).build();
+        assertThat(ShadowToast.getTextOfLatestToast()).isNotNull();
+        fragment.onLocationChanged(location3);
+        //assertThat(ShadowToast.getTextOfLatestToast()).contains("foo");
+        //fragment.pager.getFocusedChild()
+        //assertThat(actualTextView.getText().toString()).isEqualTo(
+        //        "Continue on 19th Street for 520ft");
+        //
+        //assertThat(fragment.getCurrentItem()).isEqualTo(1);
+    }
+
     @Test
     public void onLocationChange_shouldNotAdvance() throws Exception {
+        fragment.setLocationPassThrough(true);
         ArrayList<Instruction> instructions = new ArrayList<Instruction>();
         instructions.add(getTestInstruction(0, 0));
         instructions.add(getTestInstruction(0, 0));
@@ -528,7 +565,9 @@ public class RouteFragmentTest {
 
             }
         };
-        return (View) fragment.pager.getAdapter().instantiateItem(group, position);
+        View v = (View) fragment.pager.getAdapter().instantiateItem(group, position);
+        v.setTag("Instruction_" + String.valueOf(position));
+        return v;
     }
 
     private void initTestFragment() {
@@ -556,7 +595,7 @@ public class RouteFragmentTest {
 
     private Instruction getTestInstruction(double lat, double lng) throws Exception {
         String raw = "        [\n" +
-                "            \"10\",\n" + // turn instruction
+                "            \"3\",\n" + // turn instruction
                 "            \"19th Street\",\n" + // way
                 "            160,\n" + // length in meters
                 "            0,\n" + // position?
@@ -573,6 +612,7 @@ public class RouteFragmentTest {
 
     private Location getTestLocation(double lat, double lng) {
         Location testLocation = new Location("testing");
+        testLocation.setAccuracy(7.0f);
         testLocation.setLatitude(lat);
         testLocation.setLongitude(lng);
         return testLocation;
